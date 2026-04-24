@@ -321,23 +321,24 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
 
     addTypingIndicator();
 
-    const delay = 700 + Math.random() * 600;
-    setTimeout(() => {
-      removeTypingIndicator();
-      const reply = getAIReply(currentMode, text);
-      addMessage('ai', reply);
-      isTyping = false;
+    getAIReply(currentMode, text).then(reply => {
+  removeTypingIndicator();
+  addMessage('ai', reply);
+  isTyping = false;
 
-      // Wire up code copy buttons
-      document.querySelectorAll('.code-copy').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const code = this.closest('.code-block')?.querySelector('.code-body')?.innerText || '';
-          navigator.clipboard?.writeText(code).catch(() => {});
-          this.textContent = 'Copied!';
-          setTimeout(() => this.textContent = 'Copy', 1500);
-        });
-      });
-    }, delay);
+  document.querySelectorAll('.code-copy').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const code = this.closest('.code-block')?.querySelector('.code-body')?.innerText || '';
+      navigator.clipboard?.writeText(code).catch(() => {});
+      this.textContent = 'Copied!';
+      setTimeout(() => this.textContent = 'Copy', 1500);
+    });
+  });
+}).catch(() => {
+  removeTypingIndicator();
+  addMessage('ai', 'Sorry, something went wrong. Please try again.');
+  isTyping = false;
+});
   }
 
   function setMode(mode) {
