@@ -14,7 +14,7 @@ export async function getAIReply(mode, userMessage) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
+        'Authorization': 'Bearer ' + API_KEY,
         'HTTP-Referer': 'https://sandy23786.github.io/Leamus-AI/',
         'X-Title': 'Leamus AI'
       },
