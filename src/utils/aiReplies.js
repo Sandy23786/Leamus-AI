@@ -1,4 +1,4 @@
-const API_KEY = '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';
+const API_KEY = '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';
 
 const SYSTEM_PROMPTS = {
   chat:     'You are Leamus AI, a helpful assistant. Be concise and clear.',
