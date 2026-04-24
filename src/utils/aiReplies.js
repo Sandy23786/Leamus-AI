@@ -1,4 +1,4 @@
-const API_KEY = 'AIzaSyD078jhRxyAH9DBbEHwNsewNG5seW5lM2c';
+const API_KEY = 'AIzaSyD86J7ODFVr-japDRk89QvYxWEg2GM-qj0';
 
 export async function getAIReply(mode, userMessage) {
   try {
