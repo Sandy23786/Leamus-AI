@@ -10,21 +10,17 @@ const SYSTEM_PROMPTS = {
 
 export async function getAIReply(mode, userMessage) {
   try {
+    const prompt = SYSTEM_PROMPTS[mode] + '\n\nUser: ' + userMessage;
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.chat }]
-          },
           contents: [
             {
-              role: 'user',
-              parts: [{ text: userMessage }]
+              parts: [{ text: prompt }]
             }
           ],
           generationConfig: {
@@ -36,14 +32,18 @@ export async function getAIReply(mode, userMessage) {
     );
 
     const data = await response.json();
+    console.log('Gemini response:', data);
 
     if (data.candidates && data.candidates[0]) {
       return data.candidates[0].content.parts[0].text;
+    } else if (data.error) {
+      return `API Error: ${data.error.message}`;
     } else {
       return 'Sorry, I could not get a response. Please try again.';
     }
 
   } catch (error) {
-    return 'Sorry, I could not connect to the AI. Please check your API key and try again.';
+    console.error('Error:', error);
+    return `Error: ${error.message}`;
   }
 }
