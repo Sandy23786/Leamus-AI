@@ -1,27 +1,41 @@
-const API_KEY = 'AIzaSyD86J7ODFVr-japDRk89QvYxWEg2GM-qj0';
+const API_KEY = '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';
+
+const SYSTEM_PROMPTS = {
+  chat:     'You are Leamus AI, a helpful assistant. Be concise and clear.',
+  write:    'You are Leamus AI, an expert writer. Help with emails, blogs, stories, and any writing tasks.',
+  code:     'You are Leamus AI, a senior software engineer. Write clean code with explanations.',
+  data:     'You are Leamus AI, a data analyst. Interpret data and provide structured insights.',
+  research: 'You are Leamus AI, a research assistant. Provide accurate, well-structured information.'
+};
 
 export async function getAIReply(mode, userMessage) {
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: userMessage }] }]
-        })
-      }
-    );
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`,
+        'HTTP-Referer': 'https://sandy23786.github.io/Leamus-AI/',
+        'X-Title': 'Leamus AI'
+      },
+      body: JSON.stringify({
+        model: 'mistralai/mistral-7b-instruct:free',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.chat },
+          { role: 'user', content: userMessage }
+        ]
+      })
+    });
 
     const data = await response.json();
 
-    if (data.candidates && data.candidates[0]) {
-      return data.candidates[0].content.parts[0].text;
+    if (data.choices && data.choices[0]) {
+      return data.choices[0].message.content;
     } else {
       return 'API said: ' + JSON.stringify(data);
     }
 
   } catch (error) {
-    return 'Fetch failed: ' + error.message;
+    return 'Error: ' + error.message;
   }
 }
