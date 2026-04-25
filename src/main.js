@@ -72,7 +72,10 @@ function renderApp() {
     document.getElementById('sidebarMount'),
     {
       user: currentUser,
-      onNewChat: () => chatController?.newChat(),
+      onNewChat: () => {
+  window.archiveCurrentChat && window.archiveCurrentChat();
+  chatController?.newChat();
+},
       onModeChange: (mode) => chatController?.setMode(mode),
       onHistorySelect: (prompt) => chatController?.loadHistory(prompt)
     }
@@ -80,15 +83,35 @@ function renderApp() {
 
   window.sidebarController = sidebarController;
 
-  window.addToSessionHistory = function(text) {
-    const exists = window.sessionHistory.find(h => h.text === text);
-    if (!exists) {
-      window.sessionHistory.unshift({
-        text: text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      });
+  window.sessionChats = window.sessionChats || [];
+window.currentChatMessages = window.currentChatMessages || [];
+
+window.addToSessionHistory = function(text) {
+  const exists = window.sessionHistory.find(h => h.text === text);
+  if (!exists) {
+    window.sessionHistory.unshift({
+      text: text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+  }
+};
+
+window.archiveCurrentChat = function() {
+  if (window.sessionHistory && window.sessionHistory.length > 0) {
+    window.sessionChats.unshift({
+      messages: [...window.sessionHistory],
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      title: window.sessionHistory[window.sessionHistory.length - 1]?.text || 'Chat'
+    });
+    window.sessionHistory = [];
+    if (window.sidebarController) {
+      const recentDiv = document.getElementById('recentChats');
+      if (recentDiv) {
+        recentDiv.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:6px 10px;">No chats yet</div>';
+      }
     }
-  };
+  }
+};
 
   chatController = renderChat(
     document.getElementById('chatMount'),
@@ -152,7 +175,10 @@ function showHistoryView() {
   const chatArea = mount.querySelector('.chat-area');
   if (chatArea) chatArea.style.display = 'none';
 
-  const histories = window.sessionHistory || [];
+  const histories = [
+  ...(window.sessionHistory || []),
+  ...((window.sessionChats || []).flatMap(chat => chat.messages))
+];
 
   const div = document.createElement('div');
   div.className = 'special-view';
