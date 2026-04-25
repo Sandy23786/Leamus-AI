@@ -1,4 +1,5 @@
-const API_KEY = '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';
+const CF_TOKEN = 'cfat_B4leO8LUZKw0QLCnz6W1t0xqqHTQJPkp6yoSviMJ8cbf12ec';
+const CF_ACCOUNT_ID = '4415250ac6be7a2fd2c8e0c43dab537b';
 
 const SYSTEM_PROMPTS = {
   chat:     'You are Leamus AI, a helpful assistant. Be concise and clear.',
@@ -10,34 +11,27 @@ const SYSTEM_PROMPTS = {
 
 export async function getAIReply(mode, userMessage) {
   try {
-    const systemPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.chat;
-    const fullPrompt = systemPrompt + '\n\nUser: ' + userMessage + '\n\nAssistant:';
-
     const response = await fetch(
-      'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+      `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/@cf/mistral/mistral-7b-instruct-v0.1`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + API_KEY
+          'Authorization': 'Bearer ' + CF_TOKEN
         },
         body: JSON.stringify({
-          inputs: fullPrompt,
-          parameters: {
-            max_new_tokens: 512,
-            temperature: 0.7,
-            return_full_text: false
-          }
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.chat },
+            { role: 'user', content: userMessage }
+          ]
         })
       }
     );
 
     const data = await response.json();
 
-    if (Array.isArray(data) && data[0]?.generated_text) {
-      return data[0].generated_text.trim();
-    } else if (data.error) {
-      return 'API Error: ' + data.error;
+    if (data.result && data.result.response) {
+      return data.result.response;
     } else {
       return 'API said: ' + JSON.stringify(data);
     }
