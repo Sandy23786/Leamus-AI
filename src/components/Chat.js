@@ -315,6 +315,7 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
       : text;
 
     addMessage('user', userText);
+    if (window.sidebarController) window.sidebarController.addRecentChat(text);
     attachedFile = null;
     container.querySelector('#filePreviewArea').innerHTML = '';
     fileInput.value = '';
