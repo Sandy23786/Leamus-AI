@@ -31,35 +31,35 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
           <div class="feature-badge badge-pink">🔍 Research</div>
         </div>
         <div class="suggestion-grid">
-          <div class="suggestion-card" data-prompt="Write a professional cold email introducing a new SaaS product to a potential enterprise client">
-            <span class="suggestion-icon">✉️</span>
-            <div>
-              <div class="suggestion-label">Writing</div>
-              <div class="suggestion-text">Write a cold outreach email</div>
-            </div>
-          </div>
-          <div class="suggestion-card" data-prompt="Debug this JavaScript async issue: const arr = [1,2,3]; arr.forEach(async (i) => { await fetch(i); })">
-            <span class="suggestion-icon">🐛</span>
-            <div>
-              <div class="suggestion-label">Coding</div>
-              <div class="suggestion-text">Debug my code snippet</div>
-            </div>
-          </div>
-          <div class="suggestion-card" data-prompt="Research and summarize the top AI trends and breakthroughs in 2025 with key findings">
-            <span class="suggestion-icon">🔍</span>
-            <div>
-              <div class="suggestion-label">Research</div>
-              <div class="suggestion-text">Research AI trends in 2025</div>
-            </div>
-          </div>
-          <div class="suggestion-card" data-prompt="Analyze this sales data and give key insights: Q1: $42k, Q2: $58k, Q3: $51k, Q4: $74k">
-            <span class="suggestion-icon">📈</span>
-            <div>
-              <div class="suggestion-label">Analysis</div>
-              <div class="suggestion-text">Analyze quarterly sales data</div>
-            </div>
-          </div>
-        </div>
+  <div class="suggestion-card" data-prompt="Debug this JavaScript async issue: const arr = [1,2,3]; arr.forEach(async (i) => { await fetch(i); })">
+    <span class="suggestion-icon">🐛</span>
+    <div>
+      <div class="suggestion-label">Coding</div>
+      <div class="suggestion-text">Debug a JavaScript async issue</div>
+    </div>
+  </div>
+  <div class="suggestion-card" data-prompt="Write a professional cold email introducing Leamus AI to a potential client">
+    <span class="suggestion-icon">✉️</span>
+    <div>
+      <div class="suggestion-label">Writing</div>
+      <div class="suggestion-text">Write a cold outreach email</div>
+    </div>
+  </div>
+  <div class="suggestion-card" data-prompt="Research and summarize the top AI trends and breakthroughs in 2025">
+    <span class="suggestion-icon">🔍</span>
+    <div>
+      <div class="suggestion-label">Research</div>
+      <div class="suggestion-text">Research AI trends in 2025</div>
+    </div>
+  </div>
+  <div class="suggestion-card" data-prompt="Analyze this sales data and give key insights: Q1: $42k, Q2: $58k, Q3: $51k, Q4: $74k">
+    <span class="suggestion-icon">📈</span>
+    <div>
+      <div class="suggestion-label">Analysis</div>
+      <div class="suggestion-text">Analyze quarterly sales data</div>
+    </div>
+  </div>
+</div>
       </div>
 
       <!-- Messages -->
