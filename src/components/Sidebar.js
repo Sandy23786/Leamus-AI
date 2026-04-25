@@ -48,7 +48,6 @@ export function renderSidebar(container, { user, onNewChat, onModeChange, onHist
           <div class="user-avatar" style="width:28px;height:28px;font-size:11px;">${user.initials}</div>
           <div class="sidebar-user-info">
             <div class="sidebar-user-name">${user.name}</div>
-            <div class="sidebar-user-plan">${user.plan} plan</div>
           </div>
           <span style="color:var(--text-muted);font-size:16px;cursor:pointer;">⚙</span>
         </div>
