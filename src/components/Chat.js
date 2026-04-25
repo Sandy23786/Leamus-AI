@@ -159,12 +159,17 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  function showWelcome() {
+function showWelcome() {
     welcomeArea.style.display = 'flex';
     messages.classList.remove('visible');
     messages.innerHTML = '';
     attachedFile = null;
     container.querySelector('#filePreviewArea').innerHTML = '';
+    // Show greeting message after short delay
+    setTimeout(() => {
+      hideWelcome();
+      addMessage('ai', 'Hi! How can I help you today?');
+    }, 300);
   }
 
   function hideWelcome() {
