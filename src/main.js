@@ -232,8 +232,6 @@ function showUserMenu() {
     <div style="padding:10px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;">
       <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${currentUser.name}</div>
       <div style="font-size:11px;color:var(--text-secondary)">${currentUser.email}</div>
-      <div style="font-size:11px;color:var(--accent);margin-top:2px;">${currentUser.plan} plan</div>
-    </div>
     ${[
       { icon:'⚙️', label:'Settings' },
       { icon:'👤', label:'Profile' },
