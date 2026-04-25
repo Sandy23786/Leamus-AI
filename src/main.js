@@ -12,6 +12,7 @@ let sidebarOpen = true;
 let currentUser = null;
 let chatController = null;
 let sidebarController = null;
+
 window.sessionHistory = [];
 
 // ── Boot ──
@@ -48,7 +49,6 @@ function onAuthSuccess(user) {
 function renderApp() {
   app.innerHTML = `
     <div class="screen app-screen active" style="flex-direction:column;height:100vh;">
-      <!-- Topbar -->
       <div class="topbar">
         <button class="topbar-btn" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
         <div class="topbar-logo">
@@ -61,8 +61,6 @@ function renderApp() {
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle light/dark mode">🌙</button>
         <div class="user-avatar" id="userAvatar" title="${currentUser.name}">${currentUser.initials}</div>
       </div>
-
-      <!-- Body -->
       <div class="app-body">
         <div id="sidebarMount"></div>
         <div id="chatMount" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;"></div>
@@ -70,40 +68,33 @@ function renderApp() {
     </div>
   `;
 
-  // Sidebar
   sidebarController = renderSidebar(
     document.getElementById('sidebarMount'),
     {
       user: currentUser,
       onNewChat: () => chatController?.newChat(),
-      onModeChange: (mode) => {
-        chatController?.setMode(mode);
-      },
-      onHistorySelect: (prompt) => {
-        chatController?.loadHistory(prompt);
-      }
+      onModeChange: (mode) => chatController?.setMode(mode),
+      onHistorySelect: (prompt) => chatController?.loadHistory(prompt)
     }
   );
 
   window.sidebarController = sidebarController;
 
   window.addToSessionHistory = function(text) {
-  const exists = window.sessionHistory.find(h => h.text === text);
-  if (!exists) {
-    window.sessionHistory.unshift({
-      text: text,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    });
-  }
-};
+    const exists = window.sessionHistory.find(h => h.text === text);
+    if (!exists) {
+      window.sessionHistory.unshift({
+        text: text,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    }
+  };
 
-  // Chat
   chatController = renderChat(
     document.getElementById('chatMount'),
     { user: currentUser, initialMode: 'chat' }
   );
 
-  // Topbar bindings
   document.getElementById('sidebarToggle').addEventListener('click', () => {
     sidebarOpen = !sidebarOpen;
     sidebarController.collapse(!sidebarOpen);
@@ -114,14 +105,24 @@ function renderApp() {
   document.getElementById('historyTopBtn').addEventListener('click', function() {
     const active = this.classList.toggle('active');
     document.getElementById('dashboardTopBtn').classList.remove('active');
-    if (active) showSpecialView('history');
+    const chatMount = document.getElementById('chatMount');
+    const chatArea = chatMount ? chatMount.querySelector('.chat-area') : null;
+    const existing = chatMount ? chatMount.querySelector('.special-view') : null;
+    if (existing) existing.remove();
+    if (chatArea) chatArea.style.display = 'flex';
+    if (active) showHistoryView();
     else chatController?.newChat();
   });
 
   document.getElementById('dashboardTopBtn').addEventListener('click', function() {
     const active = this.classList.toggle('active');
     document.getElementById('historyTopBtn').classList.remove('active');
-    if (active) showSpecialView('dashboard');
+    const chatMount = document.getElementById('chatMount');
+    const chatArea = chatMount ? chatMount.querySelector('.chat-area') : null;
+    const existing = chatMount ? chatMount.querySelector('.special-view') : null;
+    if (existing) existing.remove();
+    if (chatArea) chatArea.style.display = 'flex';
+    if (active) showDashboardView();
     else chatController?.newChat();
   });
 
@@ -137,17 +138,26 @@ function toggleTheme() {
   localStorage.setItem('leamus_theme', isDark ? 'light' : 'dark');
 }
 
-// Restore saved theme
 const savedTheme = localStorage.getItem('leamus_theme');
 if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
 
-// ── Special views (History / Dashboard) ──
-function showSpecialView(view) {
+// ── History View ──
+function showHistoryView() {
   const mount = document.getElementById('chatMount');
   if (!mount) return;
 
+  const existing = mount.querySelector('.special-view');
+  if (existing) existing.remove();
+
+  const chatArea = mount.querySelector('.chat-area');
+  if (chatArea) chatArea.style.display = 'none';
+
   const histories = window.sessionHistory || [];
-  const content = view === 'history' ? `
+
+  const div = document.createElement('div');
+  div.className = 'special-view';
+  div.style.cssText = 'flex:1;overflow:hidden;display:flex;flex-direction:column;';
+  div.innerHTML = `
     <div style="flex:1;overflow-y:auto;padding:20px;">
       <h2 style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:16px;">📋 Chat History</h2>
       ${histories.length === 0 ? `
@@ -168,39 +178,53 @@ function showSpecialView(view) {
         </div>
       `).join('')}
     </div>
-  ` : `
+  `;
+
+  div.querySelectorAll('.history-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.getElementById('historyTopBtn').classList.remove('active');
+      document.getElementById('dashboardTopBtn').classList.remove('active');
+      div.remove();
+      if (chatArea) chatArea.style.display = 'flex';
+      const idx = parseInt(card.dataset.index);
+      const h = (window.sessionHistory || [])[idx];
+      if (h) chatController?.loadHistory(h.text);
+    });
+  });
+
+  mount.appendChild(div);
+}
+
+// ── Dashboard View ──
+function showDashboardView() {
+  const mount = document.getElementById('chatMount');
+  if (!mount) return;
+
+  const existing = mount.querySelector('.special-view');
+  if (existing) existing.remove();
+
+  const chatArea = mount.querySelector('.chat-area');
+  if (chatArea) chatArea.style.display = 'none';
+
+  const msgCount = window.sessionHistory ? window.sessionHistory.length : 0;
+
+  const div = document.createElement('div');
+  div.className = 'special-view';
+  div.style.cssText = 'flex:1;overflow:hidden;display:flex;flex-direction:column;';
+  div.innerHTML = `
     <div style="flex:1;overflow-y:auto;padding:20px;">
       <h2 style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:16px;">⚡ Dashboard</h2>
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;">
-        ${[
-          { label:'Messages sent', value:'127', icon:'💬' },
-          { label:'Docs analyzed', value:'14', icon:'📊' },
-          { label:'Code snippets', value:'38', icon:'💻' },
-          { label:'Hours saved', value:'12h', icon:'⏱️' },
-        ].map(stat => `
-          <div style="background:var(--glass2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
-            <div style="font-size:24px;margin-bottom:6px;">${stat.icon}</div>
-            <div style="font-size:24px;font-weight:700;color:var(--text-primary)">${stat.value}</div>
-            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">${stat.label}</div>
-          </div>
-        `).join('')}
-      </div>
-      <div style="background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;">
-        <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Mode Usage</div>
-        ${[
-          { mode:'Coding', pct:42, color:'var(--accent)' },
-          { mode:'Writing', pct:31, color:'var(--accent2)' },
-          { mode:'Research', pct:27, color:'var(--accent3)' },
-        ].map(m => `
-          <div style="margin-bottom:10px;">
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);margin-bottom:4px;">
-              <span>${m.mode}</span><span>${m.pct}%</span>
-            </div>
-            <div style="height:6px;background:var(--glass2);border-radius:3px;overflow:hidden;">
-              <div style="height:100%;width:${m.pct}%;background:${m.color};border-radius:3px;transition:width 0.6s ease;"></div>
-            </div>
-          </div>
-        `).join('')}
+        <div style="background:var(--glass2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
+          <div style="font-size:24px;margin-bottom:6px;">💬</div>
+          <div style="font-size:24px;font-weight:700;color:var(--text-primary)">${msgCount}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">Messages this session</div>
+        </div>
+        <div style="background:var(--glass2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
+          <div style="font-size:24px;margin-bottom:6px;">⏱️</div>
+          <div style="font-size:24px;font-weight:700;color:var(--text-primary)">Live</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">Session active</div>
+        </div>
       </div>
       <div style="background:rgba(108,127,255,0.1);border:1px solid rgba(108,127,255,0.3);border-radius:12px;padding:14px;">
         <div style="font-size:13px;color:var(--accent);font-weight:600;margin-bottom:4px;">💡 Pro Tip</div>
@@ -209,34 +233,8 @@ function showSpecialView(view) {
     </div>
   `;
 
-  // Temporarily inject into chat area
-  const existing = mount.querySelector('.special-view');
-  if (existing) existing.remove();
-
-  const div = document.createElement('div');
-  div.className = 'special-view';
-  div.style.cssText = 'flex:1;overflow:hidden;display:flex;flex-direction:column;';
-  div.innerHTML = content;
-
-  // Insert before chat-area
- const chatArea = mount.querySelector('.chat-area');
-if (chatArea) {
-  chatArea.style.display = 'none';
   mount.appendChild(div);
 }
-
-// Wire up history card clicks
-div.querySelectorAll('.history-card').forEach(card => {
-  card.addEventListener('click', () => {
-    document.getElementById('historyTopBtn').classList.remove('active');
-    document.getElementById('dashboardTopBtn').classList.remove('active');
-    div.remove();
-    if (chatArea) chatArea.style.display = 'flex';
-    const idx = parseInt(card.dataset.index);
-    const histories = window.sessionHistory || [];
-    if (histories[idx]) chatController?.loadHistory(histories[idx].text);
-  });
-});
 
 // ── User menu ──
 function showUserMenu() {
@@ -250,16 +248,15 @@ function showUserMenu() {
     background:var(--navy-800);border:1px solid var(--border);
     border-radius:12px;padding:8px;min-width:200px;
     box-shadow:0 8px 32px rgba(0,0,0,0.4);
-    animation:fadeUp 0.2s ease;
   `;
   menu.innerHTML = `
     <div style="padding:10px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;">
       <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${currentUser.name}</div>
       <div style="font-size:11px;color:var(--text-secondary)">${currentUser.email}</div>
+    </div>
     ${[
       { icon:'⚙️', label:'Settings' },
       { icon:'👤', label:'Profile' },
-      { icon:'📊', label:'Usage & Billing' },
       { icon:'🔒', label:'Privacy' },
     ].map(item => `
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-secondary);transition:all 0.15s;"
@@ -285,7 +282,6 @@ function showUserMenu() {
     renderAuthScreen();
   });
 
-  // Click outside to close
   setTimeout(() => {
     document.addEventListener('click', function handler(e) {
       if (!menu.contains(e.target) && e.target.id !== 'userAvatar') {
