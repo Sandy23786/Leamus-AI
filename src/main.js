@@ -12,6 +12,7 @@ let sidebarOpen = true;
 let currentUser = null;
 let chatController = null;
 let sidebarController = null;
+window.sessionHistory = [];
 
 // ── Boot ──
 function boot() {
@@ -86,6 +87,16 @@ function renderApp() {
 
   window.sidebarController = sidebarController;
 
+  window.addToSessionHistory = function(text) {
+  const exists = window.sessionHistory.find(h => h.text === text);
+  if (!exists) {
+    window.sessionHistory.unshift({
+      text: text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+  }
+};
+
   // Chat
   chatController = renderChat(
     document.getElementById('chatMount'),
@@ -135,23 +146,22 @@ function showSpecialView(view) {
   const mount = document.getElementById('chatMount');
   if (!mount) return;
 
+  const histories = window.sessionHistory || [];
   const content = view === 'history' ? `
     <div style="flex:1;overflow-y:auto;padding:20px;">
       <h2 style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:16px;">📋 Chat History</h2>
-      ${[
-        { icon: '✍️', title: 'Write marketing email for SaaS', time: 'Today, 2:34 PM' },
-        { icon: '💻', title: 'Debug React useEffect hook', time: 'Yesterday, 11:20 AM' },
-        { icon: '📊', title: 'Analyze Q4 sales performance data', time: '2 days ago' },
-        { icon: '🔍', title: 'Research AI trends and developments 2025', time: '1 week ago' },
-        { icon: '💬', title: 'Explain machine learning fundamentals', time: '1 week ago' },
-      ].map(h => `
-        <div style="background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all 0.2s;"
+      ${histories.length === 0 ? `
+        <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
+          <div style="font-size:40px;margin-bottom:12px;">💬</div>
+          <div style="font-size:14px;">No chats yet this session.<br>Start a conversation to see your history here.</div>
+        </div>
+      ` : histories.map((h, i) => `
+        <div class="history-card" data-index="${i}" style="background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all 0.2s;"
           onmouseover="this.style.borderColor='var(--accent)'"
-          onmouseout="this.style.borderColor='var(--border)'"
-          onclick="document.getElementById('historyTopBtn').classList.remove('active');document.getElementById('dashboardTopBtn').classList.remove('active');">
-          <span style="font-size:20px;">${h.icon}</span>
+          onmouseout="this.style.borderColor='var(--border)'">
+          <span style="font-size:20px;">💬</span>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13.5px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.title}</div>
+            <div style="font-size:13.5px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.text}</div>
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${h.time}</div>
           </div>
           <span style="color:var(--text-muted);font-size:13px;">→</span>
@@ -209,12 +219,24 @@ function showSpecialView(view) {
   div.innerHTML = content;
 
   // Insert before chat-area
-  const chatArea = mount.querySelector('.chat-area');
-  if (chatArea) {
-    chatArea.style.display = 'none';
-    mount.appendChild(div);
-  }
+ const chatArea = mount.querySelector('.chat-area');
+if (chatArea) {
+  chatArea.style.display = 'none';
+  mount.appendChild(div);
 }
+
+// Wire up history card clicks
+div.querySelectorAll('.history-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.getElementById('historyTopBtn').classList.remove('active');
+    document.getElementById('dashboardTopBtn').classList.remove('active');
+    div.remove();
+    if (chatArea) chatArea.style.display = 'flex';
+    const idx = parseInt(card.dataset.index);
+    const histories = window.sessionHistory || [];
+    if (histories[idx]) chatController?.loadHistory(histories[idx].text);
+  });
+});
 
 // ── User menu ──
 function showUserMenu() {
