@@ -1,6 +1,3 @@
-/**
- * Sidebar Component
- */
 export function renderSidebar(container, { user, onNewChat, onModeChange, onHistorySelect }) {
   container.innerHTML = `
     <div class="sidebar" id="sidebar">
@@ -29,17 +26,8 @@ export function renderSidebar(container, { user, onNewChat, onModeChange, onHist
 
       <div class="sidebar-section">
         <div class="sidebar-label">Recent</div>
-        <div class="sidebar-item history-item" data-chat="Debug React useEffect hook">
-          <span class="sidebar-icon">💬</span> Debug React hook
-        </div>
-        <div class="sidebar-item history-item" data-chat="Write marketing email for SaaS">
-          <span class="sidebar-icon">✍️</span> Marketing email
-        </div>
-        <div class="sidebar-item history-item" data-chat="Analyze Q4 sales performance data">
-          <span class="sidebar-icon">📊</span> Q4 sales analysis
-        </div>
-        <div class="sidebar-item history-item" data-chat="Research latest AI developments 2025">
-          <span class="sidebar-icon">🔍</span> AI trends 2025
+        <div id="recentChats" style="display:flex;flex-direction:column;gap:2px;">
+          <div style="font-size:12px;color:var(--text-muted);padding:6px 10px;">No chats yet</div>
         </div>
       </div>
 
@@ -55,22 +43,13 @@ export function renderSidebar(container, { user, onNewChat, onModeChange, onHist
     </div>
   `;
 
-  // New chat
   container.querySelector('#newChatBtn').addEventListener('click', onNewChat);
 
-  // Mode items
   container.querySelectorAll('[data-mode]').forEach(item => {
     item.addEventListener('click', () => {
       container.querySelectorAll('[data-mode]').forEach(i => i.classList.remove('active'));
       item.classList.add('active');
       onModeChange(item.dataset.mode);
-    });
-  });
-
-  // History items
-  container.querySelectorAll('.history-item').forEach(item => {
-    item.addEventListener('click', () => {
-      onHistorySelect(item.dataset.chat);
     });
   });
 
@@ -82,6 +61,33 @@ export function renderSidebar(container, { user, onNewChat, onModeChange, onHist
     },
     collapse(yes) {
       container.querySelector('#sidebar').classList.toggle('collapsed', yes);
+    },
+    addRecentChat(text) {
+      const recentDiv = document.getElementById('recentChats');
+      if (!recentDiv) return;
+
+      // Remove "No chats yet" placeholder
+      const placeholder = recentDiv.querySelector('[style*="color:var(--text-muted)"]');
+      if (placeholder) placeholder.remove();
+
+      // Don't add duplicates
+      const existing = [...recentDiv.querySelectorAll('.recent-item')].map(el => el.dataset.chat);
+      if (existing.includes(text)) return;
+
+      // Keep max 6 recent items
+      const items = recentDiv.querySelectorAll('.recent-item');
+      if (items.length >= 6) items[items.length - 1].remove();
+
+      const div = document.createElement('div');
+      div.className = 'sidebar-item recent-item';
+      div.dataset.chat = text;
+      div.style.cssText = 'font-size:12.5px;';
+      div.innerHTML = `
+        <span class="sidebar-icon">💬</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${text.slice(0, 28)}${text.length > 28 ? '…' : ''}</span>
+      `;
+      div.addEventListener('click', () => onHistorySelect(text));
+      recentDiv.insertBefore(div, recentDiv.firstChild);
     }
   };
 }
