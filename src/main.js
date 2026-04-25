@@ -84,6 +84,8 @@ function renderApp() {
     }
   );
 
+  window.sidebarController = sidebarController;
+
   // Chat
   chatController = renderChat(
     document.getElementById('chatMount'),
