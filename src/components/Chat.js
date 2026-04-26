@@ -377,12 +377,20 @@ function showWelcome() {
     recognition.start();
   }
 
-  return {
+ return {
     newChat: showWelcome,
     setMode,
     loadHistory: (prompt) => {
       textarea.value = prompt;
       sendMessage();
+    },
+    restoreChat: (title, msgs) => {
+      hideWelcome();
+      messages.innerHTML = '';
+      if (msgs && msgs.length > 0) {
+        msgs.forEach(m => addMessage(m.role, m.text));
+      } else {
+        addMessage('ai', 'Continuing from: **' + title + '**\n\nHow can I help you further?');
+      }
     }
   };
-}
