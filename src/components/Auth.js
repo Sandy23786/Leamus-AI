@@ -1,6 +1,3 @@
-/**
- * Auth Component – Sign in / Sign up screen
- */
 export function renderAuth(container, onSuccess) {
   let mode = 'login';
 
@@ -12,12 +9,10 @@ export function renderAuth(container, onSuccess) {
           <div class="auth-logo-text">Leamus<span>AI</span></div>
         </div>
         <p class="auth-tagline">Your intelligent assistant for everything</p>
-
         <div class="auth-tabs">
           <div class="auth-tab active" data-tab="login">Sign in</div>
           <div class="auth-tab" data-tab="signup">Create account</div>
         </div>
-
         <form class="auth-form" id="authForm" novalidate>
           <div class="form-group hidden" id="nameGroup">
             <label class="form-label" for="nameInput">Full name</label>
@@ -58,21 +53,15 @@ export function renderAuth(container, onSuccess) {
     </div>
   `;
 
-  // Tab switching
   container.querySelectorAll('.auth-tab').forEach(tab => {
     tab.addEventListener('click', () => switchMode(tab.dataset.tab));
   });
-
-  container.getElementById = (id) => container.querySelector(`#${id}`);
 
   container.querySelector('#switchAuthLink').addEventListener('click', () => {
     switchMode(mode === 'login' ? 'signup' : 'login');
   });
 
-  container.querySelector('#googleBtn').addEventListener('click', () => {
-    handleGoogleAuth();
-  });
-
+  container.querySelector('#googleBtn').addEventListener('click', handleGoogleAuth);
   container.querySelector('#authForm').addEventListener('submit', (e) => {
     e.preventDefault();
     handleSubmit();
@@ -97,6 +86,21 @@ export function renderAuth(container, onSuccess) {
     });
   }
 
+  function extractName(email, fullName) {
+    if (fullName && fullName.trim()) {
+      return fullName.trim().split(' ')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+    }
+    const local = email.split('@')[0];
+    return local
+      .replace(/[^a-zA-Z0-9 ]/g, ' ')
+      .split(' ')
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   function handleSubmit() {
     const email = container.querySelector('#emailInput').value.trim();
     const password = container.querySelector('#passwordInput').value;
@@ -108,28 +112,20 @@ export function renderAuth(container, onSuccess) {
 
     setTimeout(() => {
       const rawName = mode === 'signup'
-        ? (container.querySelector('#nameInput').value.trim() || email.split('@')[0])
-        : email.split('@')[0];
-
-      // Capitalize and clean name from email
-      const cleanName = rawName
-        .replace(/[^a-zA-Z0-9 ]/g, ' ')
-        .split(' ')
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ')
-        .trim();
-
+        ? container.querySelector('#nameInput').value.trim()
+        : '';
+      const name = extractName(email, rawName);
       const user = {
-        name: cleanName,
+        name,
         email,
-        initials: cleanName.slice(0, 2).toUpperCase(),
+        initials: name.slice(0, 2).toUpperCase(),
         plan: 'Pro'
       };
       onSuccess(user);
     }, 800);
   }
 
- function handleGoogleAuth() {
+  function handleGoogleAuth() {
     const btn = container.querySelector('#googleBtn');
     btn.textContent = 'Connecting…';
     btn.disabled = true;
@@ -142,3 +138,4 @@ export function renderAuth(container, onSuccess) {
       });
     }, 700);
   }
+}
