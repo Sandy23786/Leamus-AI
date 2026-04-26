@@ -106,29 +106,39 @@ export function renderAuth(container, onSuccess) {
     btn.textContent = 'Signing in…';
     btn.disabled = true;
 
-    // Simulate auth — replace with real API call
     setTimeout(() => {
+      const rawName = mode === 'signup'
+        ? (container.querySelector('#nameInput').value.trim() || email.split('@')[0])
+        : email.split('@')[0];
+
+      // Capitalize and clean name from email
+      const cleanName = rawName
+        .replace(/[^a-zA-Z0-9 ]/g, ' ')
+        .split(' ')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ')
+        .trim();
+
       const user = {
-        name: mode === 'signup'
-          ? (container.querySelector('#nameInput').value.trim() || 'User')
-          : email.split('@')[0],
+        name: cleanName,
         email,
-        initials: (mode === 'signup'
-          ? container.querySelector('#nameInput').value.trim()
-          : email.split('@')[0]
-        ).slice(0, 2).toUpperCase() || 'U',
+        initials: cleanName.slice(0, 2).toUpperCase(),
         plan: 'Pro'
       };
       onSuccess(user);
     }, 800);
   }
 
-  function handleGoogleAuth() {
+ function handleGoogleAuth() {
     const btn = container.querySelector('#googleBtn');
     btn.textContent = 'Connecting…';
     btn.disabled = true;
     setTimeout(() => {
-      onSuccess({ name: 'Google User', email: 'user@gmail.com', initials: 'GU', plan: 'Pro' });
+      onSuccess({
+        name: 'Google User',
+        email: 'user@gmail.com',
+        initials: 'GU',
+        plan: 'Pro'
+      });
     }, 700);
   }
-}
