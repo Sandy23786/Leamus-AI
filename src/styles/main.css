@@ -29,18 +29,21 @@
 
 /* Light mode */
 [data-theme="light"] {
-  --navy-900: #eef2ff;
-  --navy-800: #e0e7ff;
-  --navy-700: #c7d2fe;
-  --navy-600: #a5b4fc;
-  --navy-500: #818cf8;
-  --navy-400: #6366f1;
-  --glass:    rgba(0,0,0,0.04);
-  --glass2:   rgba(0,0,0,0.06);
-  --border:   rgba(0,0,0,0.1);
-  --text-primary:   #1e1b4b;
-  --text-secondary: #4338ca;
-  --text-muted:     #818cf8;
+  --navy-900: #ffffff;
+  --navy-800: #f0f8ff;
+  --navy-700: #daf0ff;
+  --navy-600: #0ea5e9;
+  --navy-500: #0284c7;
+  --navy-400: #0369a1;
+  --accent:   #0284c7;
+  --accent2:  #0ea5e9;
+  --accent3:  #38bdf8;
+  --glass:    rgba(14,165,233,0.06);
+  --glass2:   rgba(14,165,233,0.1);
+  --border:   rgba(14,165,233,0.2);
+  --text-primary:   #0c1a2e;
+  --text-secondary: #0369a1;
+  --text-muted:     #7ab8d4;
 }
 
 html, body { height: 100%; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
