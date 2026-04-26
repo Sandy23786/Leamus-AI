@@ -30,20 +30,20 @@
 /* Light mode */
 [data-theme="light"] {
   --navy-900: #ffffff;
-  --navy-800: #f0f8ff;
-  --navy-700: #daf0ff;
-  --navy-600: #0ea5e9;
-  --navy-500: #0284c7;
-  --navy-400: #0369a1;
-  --accent:   #0284c7;
+  --navy-800: #e0f4ff;
+  --navy-700: #b8e6ff;
+  --navy-600: #7dd3fc;
+  --navy-500: #0ea5e9;
+  --navy-400: #0284c7;
+  --accent:   #0369a1;
   --accent2:  #0ea5e9;
-  --accent3:  #38bdf8;
+  --accent3:  #06b6d4;
   --glass:    rgba(14,165,233,0.06);
   --glass2:   rgba(14,165,233,0.1);
   --border:   rgba(14,165,233,0.2);
   --text-primary:   #0c1a2e;
   --text-secondary: #0369a1;
-  --text-muted:     #7ab8d4;
+  --text-muted:     #7dd3fc;
 }
 
 html, body { height: 100%; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
