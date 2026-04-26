@@ -13,7 +13,7 @@ let currentUser = null;
 let chatController = null;
 let sidebarController = null;
 
-window.sessionHistory = [];
+window.sessionHistory = JSON.parse(localStorage.getItem('leamus_history') || '[]');
 
 // ── Boot ──
 function boot() {
@@ -93,6 +93,7 @@ window.addToSessionHistory = function(text) {
       text: text,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
+    localStorage.setItem('leamus_history', JSON.stringify(window.sessionHistory));
   }
 };
 
@@ -103,7 +104,8 @@ window.archiveCurrentChat = function() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       title: window.sessionHistory[window.sessionHistory.length - 1]?.text || 'Chat'
     });
-    window.sessionHistory = [];
+   window.sessionHistory = [];
+localStorage.setItem('leamus_history', JSON.stringify(window.sessionHistory));
     if (window.sidebarController) {
       const recentDiv = document.getElementById('recentChats');
       if (recentDiv) {
@@ -185,7 +187,10 @@ function showHistoryView() {
   div.style.cssText = 'flex:1;overflow:hidden;display:flex;flex-direction:column;';
   div.innerHTML = `
     <div style="flex:1;overflow-y:auto;padding:20px;">
-      <h2 style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:16px;">📋 Chat History</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  <h2 style="font-size:18px;font-weight:600;color:var(--text-primary);">📋 Chat History</h2>
+  <button id="clearHistoryBtn" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--danger);cursor:pointer;font-family:inherit;">🗑 Clear</button>
+</div>
       ${histories.length === 0 ? `
         <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
           <div style="font-size:40px;margin-bottom:12px;">💬</div>
@@ -217,6 +222,15 @@ function showHistoryView() {
       if (h) chatController?.loadHistory(h.text);
     });
   });
+
+  const clearBtn = div.querySelector('#clearHistoryBtn');
+if (clearBtn) {
+  clearBtn.addEventListener('click', () => {
+    window.sessionHistory = [];
+    localStorage.removeItem('leamus_history');
+    showHistoryView();
+  });
+}
 
   mount.appendChild(div);
 }
