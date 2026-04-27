@@ -88,7 +88,8 @@ export function renderAuth(container, onSuccess) {
 
   function extractName(email, fullName) {
     if (fullName && fullName.trim()) {
-      return fullName.trim().split(' ')
+      return fullName.trim()
+        .split(' ')
         .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
         .join(' ');
     }
@@ -111,10 +112,10 @@ export function renderAuth(container, onSuccess) {
     btn.disabled = true;
 
     setTimeout(() => {
-      const rawName = mode === 'signup'
+      const fullName = mode === 'signup'
         ? container.querySelector('#nameInput').value.trim()
         : '';
-      const name = extractName(email, rawName);
+      const name = extractName(email, fullName);
       const user = {
         name,
         email,
