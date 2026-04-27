@@ -174,12 +174,62 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
     textarea.placeholder = placeholders[mode] || 'Ask Leamus AI anything…';
   }
 
-  function startVoiceInput() {
-    if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) { textarea.value = '(Voice input not supported)'; return; }
+ function startVoiceInput() {
+    if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      addMessage('ai', 'Voice input is not supported in this browser. Please use Chrome or Edge.');
+      return;
+    }
+
+    const voiceBtn = container.querySelector('#voiceBtn');
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SR();
     recognition.lang = 'en-US';
-    recognition.onresult = (e) => { textarea.value = e.results[0][0].transcript; autoResize(textarea); };
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    // Show recording state
+    voiceBtn.textContent = '🔴';
+    voiceBtn.title = 'Listening... click to stop';
+    textarea.placeholder = 'Listening...';
+
+    recognition.onresult = (e) => {
+      let interim = '';
+      let final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          final += e.results[i][0].transcript;
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      textarea.value = final || interim;
+      autoResize(textarea);
+    };
+
+    recognition.onend = () => {
+      voiceBtn.textContent = '🎤';
+      voiceBtn.title = 'Voice input';
+      textarea.placeholder = 'Ask Leamus AI anything…';
+      if (textarea.value.trim()) {
+        sendMessage();
+      }
+    };
+
+    recognition.onerror = (e) => {
+      voiceBtn.textContent = '🎤';
+      voiceBtn.title = 'Voice input';
+      textarea.placeholder = 'Ask Leamus AI anything…';
+      if (e.error === 'not-allowed') {
+        addMessage('ai', 'Microphone access was denied. Please allow microphone permission in your browser settings and try again.');
+      }
+    };
+
+    voiceBtn.onclick = () => {
+      recognition.stop();
+      voiceBtn.onclick = null;
+      voiceBtn.addEventListener('click', startVoiceInput);
+    };
+
     recognition.start();
   }
 
