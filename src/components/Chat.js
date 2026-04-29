@@ -157,11 +157,12 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
     const userText = attachedFile ? `${text}\n\n[Attached: ${attachedFile.name}]` : text;
     addMessage('user', userText);
     attachedFile = null; container.querySelector('#filePreviewArea').innerHTML = ''; fileInput.value = '';
-    if (window.sidebarController) window.sidebarController.addRecentChat(text, []);
-    if (window.addToSessionHistory) window.addToSessionHistory(text);
+    if (window.addToSessionHistory) window.addToSessionHistory(text, null);
     addTypingIndicator();
     getAIReply(currentMode, text).then(reply => {
-      removeTypingIndicator(); addMessage('ai', reply); isTyping = false;
+      removeTypingIndicator(); addMessage('ai', reply);
+      if (window.updateLastAIMessage) window.updateLastAIMessage(reply);
+      isTyping = false;
     }).catch(() => {
       removeTypingIndicator(); addMessage('ai', 'Sorry, something went wrong. Please try again.'); isTyping = false;
     });
