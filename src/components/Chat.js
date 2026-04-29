@@ -295,14 +295,23 @@ function startVoiceInput() {
     recognition.start();
   }
 
-  return {
+ return {
     newChat: showWelcome,
     setMode,
     loadHistory: (prompt) => { textarea.value = prompt; sendMessage(); },
-    restoreChat: (title, msgs) => {
-      hideWelcome(); messages.innerHTML = '';
-      if (msgs && msgs.length > 0) { msgs.forEach(m => addMessage(m.role, m.text)); }
-      else { addMessage('ai', 'Continuing from: **' + title + '**\n\nHow can I help you further?'); }
+    restoreChat: (chat) => {
+      hideWelcome();
+      messages.innerHTML = '';
+      if (chat.messages && chat.messages.length > 0) {
+        chat.messages.forEach(m => addMessage(m.role, m.text));
+      } else {
+        addMessage('ai', 'Hi! How can I help you today?');
+      }
+      // Highlight in sidebar
+      if (window.sidebarController) window.sidebarController.highlightChat(chat.id);
+      // Set current chat ID so new messages go into this chat
+      window.currentChatId = chat.id;
+      messages.scrollTop = messages.scrollHeight;
     }
   };
 }
