@@ -174,7 +174,7 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
     textarea.placeholder = placeholders[mode] || 'Ask Leamus AI anything…';
   }
 
- function startVoiceInput() {
+function startVoiceInput() {
     if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       addMessage('ai', 'Voice input is not supported in this browser. Please use Chrome or Edge.');
       return;
@@ -183,51 +183,113 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
     const voiceBtn = container.querySelector('#voiceBtn');
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SR();
+
     recognition.lang = 'en-US';
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
 
-    // Show recording state
+    let finalTranscript = '';
+    let silenceTimer = null;
+    let isListening = true;
+
+    // UI — show recording state
     voiceBtn.textContent = '🔴';
-    voiceBtn.title = 'Listening... click to stop';
-    textarea.placeholder = 'Listening...';
+    voiceBtn.title = 'Listening… click to stop';
+    textarea.placeholder = '🎙️ Listening…';
+    textarea.value = '';
+
+    // Show a live indicator message
+    hideWelcome();
+    const liveDiv = document.createElement('div');
+    liveDiv.id = 'liveVoiceIndicator';
+    liveDiv.style.cssText = 'padding:10px 16px;font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:8px;';
+    liveDiv.innerHTML = `<span style="color:red;font-size:16px;">🔴</span> <span id="liveTranscriptText">Listening… speak now</span>`;
+    messages.appendChild(liveDiv);
+    messages.scrollTop = messages.scrollHeight;
 
     recognition.onresult = (e) => {
       let interim = '';
-      let final = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      finalTranscript = '';
+
+      for (let i = 0; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
-          final += e.results[i][0].transcript;
+          finalTranscript += e.results[i][0].transcript;
         } else {
           interim += e.results[i][0].transcript;
         }
       }
-      textarea.value = final || interim;
+
+      const display = finalTranscript || interim;
+      textarea.value = display;
       autoResize(textarea);
+
+      // Update live indicator
+      const liveText = document.getElementById('liveTranscriptText');
+      if (liveText) liveText.textContent = display || 'Listening… speak now';
+
+      // Auto-send after 2 seconds of silence
+      clearTimeout(silenceTimer);
+      if (finalTranscript.trim()) {
+        silenceTimer = setTimeout(() => {
+          if (isListening) {
+            recognition.stop();
+          }
+        }, 2000);
+      }
     };
 
     recognition.onend = () => {
+      isListening = false;
+      clearTimeout(silenceTimer);
+
+      // Remove live indicator
+      document.getElementById('liveVoiceIndicator')?.remove();
+
+      // Reset button
       voiceBtn.textContent = '🎤';
       voiceBtn.title = 'Voice input';
       textarea.placeholder = 'Ask Leamus AI anything…';
-      if (textarea.value.trim()) {
+      voiceBtn.onclick = null;
+      voiceBtn.addEventListener('click', startVoiceInput);
+
+      // Send the message
+      const text = finalTranscript.trim() || textarea.value.trim();
+      if (text) {
+        textarea.value = text;
         sendMessage();
+      } else {
+        // Nothing was said
+        if (messages.querySelector('.msg')) {
+          // keep messages visible
+        } else {
+          welcomeArea.style.display = 'flex';
+          messages.classList.remove('visible');
+        }
       }
     };
 
     recognition.onerror = (e) => {
+      isListening = false;
+      clearTimeout(silenceTimer);
+      document.getElementById('liveVoiceIndicator')?.remove();
       voiceBtn.textContent = '🎤';
       voiceBtn.title = 'Voice input';
       textarea.placeholder = 'Ask Leamus AI anything…';
+      voiceBtn.onclick = null;
+      voiceBtn.addEventListener('click', startVoiceInput);
+
       if (e.error === 'not-allowed') {
-        addMessage('ai', 'Microphone access was denied. Please allow microphone permission in your browser settings and try again.');
+        addMessage('ai', '🎤 Microphone access was denied. Please allow microphone permission in your browser settings:\n\n• Click the 🔒 lock icon in the address bar\n• Set Microphone to **Allow**\n• Refresh the page and try again.');
+      } else if (e.error === 'no-speech') {
+        addMessage('ai', 'No speech detected. Please try again and speak clearly into your microphone.');
       }
     };
 
+    // Click button again to stop manually
     voiceBtn.onclick = () => {
+      isListening = false;
+      clearTimeout(silenceTimer);
       recognition.stop();
-      voiceBtn.onclick = null;
-      voiceBtn.addEventListener('click', startVoiceInput);
     };
 
     recognition.start();
