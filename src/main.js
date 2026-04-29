@@ -58,7 +58,6 @@ function renderApp() {
         </div>
         <div class="topbar-spacer"></div>
         <button class="topbar-btn" id="historyTopBtn">📋 History</button>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle light/dark mode">🌙</button>
         <div class="user-avatar" id="userAvatar" title="${currentUser.name}">${currentUser.initials}</div>
       </div>
       <div class="app-body">
@@ -157,18 +156,6 @@ function closeSpecialView() {
   if (chatArea) chatArea.style.display = 'flex';
   document.getElementById('historyTopBtn')?.classList.remove('active');
 }
-
-// ── Theme toggle ──
-function toggleTheme() {
-  const html = document.documentElement;
-  const isDark = html.getAttribute('data-theme') !== 'light';
-  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-  document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
-  localStorage.setItem('leamus_theme', isDark ? 'light' : 'dark');
-}
-
-const savedTheme = localStorage.getItem('leamus_theme');
-if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
 
 // ── History View ──
 function showHistoryView() {
