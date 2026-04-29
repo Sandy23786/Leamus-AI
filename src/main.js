@@ -1,7 +1,3 @@
-/**
- * Leamus AI – Main Entry Point
- */
-
 import { renderAuth } from './components/Auth.js';
 import { renderSidebar } from './components/Sidebar.js';
 import { renderChat } from './components/Chat.js';
@@ -13,25 +9,21 @@ let currentUser = null;
 let chatController = null;
 let sidebarController = null;
 
+// Load persisted data
 window.sessionHistory = JSON.parse(localStorage.getItem('leamus_history') || '[]');
 window.sessionChats = JSON.parse(localStorage.getItem('leamus_chats') || '[]');
+window.currentChatId = null;
 
-// ── Boot ──
 function boot() {
   const saved = sessionStorage.getItem('leamus_user');
   if (saved) {
-    try {
-      currentUser = JSON.parse(saved);
-      renderApp();
-    } catch {
-      renderAuthScreen();
-    }
+    try { currentUser = JSON.parse(saved); renderApp(); }
+    catch { renderAuthScreen(); }
   } else {
     renderAuthScreen();
   }
 }
 
-// ── Auth screen ──
 function renderAuthScreen() {
   app.innerHTML = '';
   const wrapper = document.createElement('div');
@@ -46,12 +38,11 @@ function onAuthSuccess(user) {
   renderApp();
 }
 
-// ── Main app ──
 function renderApp() {
   app.innerHTML = `
     <div class="screen app-screen active" style="flex-direction:column;height:100vh;">
       <div class="topbar">
-        <button class="topbar-btn" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+        <button class="topbar-btn" id="sidebarToggle">☰</button>
         <div class="topbar-logo">
           <div class="topbar-icon">✦</div>
           <div class="topbar-name">Leamus<span>AI</span></div>
@@ -72,57 +63,63 @@ function renderApp() {
     {
       user: currentUser,
       onNewChat: () => {
-        window.archiveCurrentChat && window.archiveCurrentChat();
+        archiveCurrentChat();
         closeSpecialView();
         chatController?.newChat();
       },
       onModeChange: (mode) => chatController?.setMode(mode),
-      onHistorySelect: (prompt, messages) => {
+      onChatSelect: (chatId) => {
         closeSpecialView();
-        chatController?.restoreChat(prompt, messages);
+        const chat = window.sessionChats.find(c => c.id === chatId);
+        if (chat) chatController?.restoreChat(chat);
       }
     }
   );
 
   window.sidebarController = sidebarController;
 
-  window.addToSessionHistory = function(text) {
-    const exists = window.sessionHistory.find(h => h.text === text);
-    if (!exists) {
-      window.sessionHistory.unshift({
-        text: text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      });
-      localStorage.setItem('leamus_history', JSON.stringify(window.sessionHistory));
-      if (window.sidebarController) window.sidebarController.addRecentChat(text, []);
+  // Generate unique chat ID
+  window.currentChatId = Date.now().toString();
+  window.currentChatMessages = [];
+
+  window.addToSessionHistory = function(userText, aiText) {
+    // Add to current chat messages
+    window.currentChatMessages = window.currentChatMessages || [];
+
+    // Save to active chat in sessionChats
+    const existing = window.sessionChats.find(c => c.id === window.currentChatId);
+    if (existing) {
+      existing.messages.push({ role: 'user', text: userText });
+      if (aiText) existing.messages.push({ role: 'ai', text: aiText });
+      existing.updatedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      localStorage.setItem('leamus_chats', JSON.stringify(window.sessionChats));
+    } else {
+      // Create new chat entry
+      const newChat = {
+        id: window.currentChatId,
+        title: userText.slice(0, 50) + (userText.length > 50 ? '…' : ''),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        messages: [
+          { role: 'ai', text: 'Hi! How can I help you today?' },
+          { role: 'user', text: userText }
+        ]
+      };
+      if (aiText) newChat.messages.push({ role: 'ai', text: aiText });
+      window.sessionChats.unshift(newChat);
+      localStorage.setItem('leamus_chats', JSON.stringify(window.sessionChats));
+      // Add to sidebar recent
+      if (window.sidebarController) {
+        window.sidebarController.addRecentChat(newChat);
+      }
     }
   };
 
-  window.archiveCurrentChat = function() {
-    if (window.sessionHistory && window.sessionHistory.length > 0) {
-      const chatMessages = document.getElementById('chatMessages');
-      const msgs = [];
-      if (chatMessages) {
-        chatMessages.querySelectorAll('.msg').forEach(msg => {
-          msgs.push({
-            role: msg.classList.contains('user') ? 'user' : 'ai',
-            text: msg.querySelector('.msg-bubble')?.innerText || ''
-          });
-        });
-      }
-      window.sessionChats.unshift({
-        title: window.sessionHistory[window.sessionHistory.length - 1]?.text || 'Chat',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        messages: msgs,
-        history: [...window.sessionHistory]
-      });
+  window.updateLastAIMessage = function(aiText) {
+    const chat = window.sessionChats.find(c => c.id === window.currentChatId);
+    if (chat) {
+      chat.messages.push({ role: 'ai', text: aiText });
       localStorage.setItem('leamus_chats', JSON.stringify(window.sessionChats));
-      window.sessionHistory = [];
-      localStorage.setItem('leamus_history', JSON.stringify(window.sessionHistory));
-      const recentDiv = document.getElementById('recentChats');
-      if (recentDiv) {
-        recentDiv.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:6px 10px;">No chats yet</div>';
-      }
     }
   };
 
@@ -131,12 +128,15 @@ function renderApp() {
     { user: currentUser, initialMode: 'chat' }
   );
 
+  // Load existing chats into sidebar
+  window.sessionChats.forEach(chat => {
+    sidebarController.addRecentChat(chat);
+  });
+
   document.getElementById('sidebarToggle').addEventListener('click', () => {
     sidebarOpen = !sidebarOpen;
     sidebarController.collapse(!sidebarOpen);
   });
-
-  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 
   document.getElementById('historyTopBtn').addEventListener('click', function() {
     const active = this.classList.toggle('active');
@@ -145,6 +145,13 @@ function renderApp() {
   });
 
   document.getElementById('userAvatar').addEventListener('click', showUserMenu);
+}
+
+function archiveCurrentChat() {
+  // Current chat is already saved in sessionChats via addToSessionHistory
+  // Just generate new chat ID
+  window.currentChatId = Date.now().toString();
+  window.currentChatMessages = [];
 }
 
 function closeSpecialView() {
@@ -157,7 +164,6 @@ function closeSpecialView() {
   document.getElementById('historyTopBtn')?.classList.remove('active');
 }
 
-// ── History View ──
 function showHistoryView() {
   const mount = document.getElementById('chatMount');
   if (!mount) return;
@@ -166,16 +172,7 @@ function showHistoryView() {
   const chatArea = mount.querySelector('.chat-area');
   if (chatArea) chatArea.style.display = 'none';
 
-  const allChats = [
-    ...(window.sessionHistory && window.sessionHistory.length > 0 ? [{
-      title: window.sessionHistory[window.sessionHistory.length - 1]?.text || 'Current chat',
-      time: 'Current session',
-      messages: [],
-      history: [...window.sessionHistory],
-      isCurrent: true
-    }] : []),
-    ...(window.sessionChats || [])
-  ];
+  const allChats = window.sessionChats || [];
 
   const div = document.createElement('div');
   div.className = 'special-view';
@@ -191,17 +188,19 @@ function showHistoryView() {
           <div style="font-size:40px;margin-bottom:12px;">💬</div>
           <div style="font-size:14px;">No chat history yet.<br>Start a conversation to see it here.</div>
         </div>
-      ` : allChats.map((chat, i) => `
-        <div class="history-card" data-index="${i}"
-          style="background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all 0.2s;"
+      ` : allChats.map(chat => `
+        <div class="history-card" data-id="${chat.id}"
+          style="background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;"
           onmouseover="this.style.borderColor='var(--accent)'"
           onmouseout="this.style.borderColor='var(--border)'">
-          <span style="font-size:20px;">${chat.isCurrent ? '🟢' : '💬'}</span>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13.5px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${chat.title}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${chat.time}${chat.isCurrent ? ' · Active' : ''}</div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:20px;">${chat.id === window.currentChatId ? '🟢' : '💬'}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13.5px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${chat.title}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${chat.time} · ${chat.messages.length} messages</div>
+            </div>
+            <span style="color:var(--text-muted);font-size:13px;">→</span>
           </div>
-          <span style="color:var(--text-muted);font-size:13px;">→</span>
         </div>
       `).join('')}
     </div>
@@ -209,27 +208,31 @@ function showHistoryView() {
 
   div.querySelectorAll('.history-card').forEach(card => {
     card.addEventListener('click', () => {
-      const idx = parseInt(card.dataset.index);
-      const chat = allChats[idx];
+      const chatId = card.dataset.id;
+      const chat = window.sessionChats.find(c => c.id === chatId);
       if (!chat) return;
       closeSpecialView();
-      if (chat.isCurrent) return;
-      chatController?.restoreChat(chat.title, chat.messages);
+      if (chatId === window.currentChatId) return;
+      archiveCurrentChat();
+      window.currentChatId = chat.id;
+      chatController?.restoreChat(chat);
     });
   });
 
   div.querySelector('#clearHistoryBtn')?.addEventListener('click', () => {
-    window.sessionHistory = [];
+    if (!confirm('Clear all chat history?')) return;
     window.sessionChats = [];
-    localStorage.removeItem('leamus_history');
+    window.sessionHistory = [];
     localStorage.removeItem('leamus_chats');
+    localStorage.removeItem('leamus_history');
+    const recentDiv = document.getElementById('recentChats');
+    if (recentDiv) recentDiv.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:6px 10px;">No chats yet</div>';
     showHistoryView();
   });
 
   mount.appendChild(div);
 }
 
-// ── User menu ──
 function showUserMenu() {
   const existing = document.getElementById('userMenu');
   if (existing) { existing.remove(); return; }
@@ -260,6 +263,10 @@ function showUserMenu() {
   document.body.appendChild(menu);
 
   menu.querySelector('#signOutBtn').addEventListener('click', () => {
+    window.sessionChats = [];
+    window.sessionHistory = [];
+    localStorage.removeItem('leamus_chats');
+    localStorage.removeItem('leamus_history');
     sessionStorage.removeItem('leamus_user');
     menu.remove();
     renderAuthScreen();
