@@ -51,6 +51,8 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
           <button class="quick-btn" data-insert="Write JavaScript code to: ">⚡ JS</button>
           <button class="quick-btn" data-insert="Summarize the following: ">📋 Summarize</button>
           <button class="quick-btn" data-insert="Research and explain: ">🔍 Research</button>
+          <button class="quick-btn" data-insert="Generate image of: ">🖼️ Image</button>
+          <button class="quick-btn" data-insert="Generate video of: ">🎬 Video</button>
         </div>
         <div id="filePreviewArea"></div>
         <div class="input-row">
@@ -118,29 +120,232 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
       .replace(/\n/g, '<br>');
   }
 
-  function addMessage(role, content, time) {
+ function addMessage(role, content, time) {
     hideWelcome();
     const div = document.createElement('div');
     div.className = `msg ${role}`;
-    const actionsHtml = role === 'ai' ? `<div class="msg-actions"><button class="msg-action-btn copy-btn">📋 Copy</button><button class="msg-action-btn save-btn">💾 Save</button></div>` : '';
+
+    const actionsHtml = role === 'ai' ? `
+      <div class="msg-actions">
+        <button class="msg-action-btn copy-btn">📋 Copy</button>
+        <button class="msg-action-btn save-btn">💾 Save</button>
+      </div>` : '';
+
+    // Check for special content types
+    if (role === 'ai' && content.startsWith('__IMAGE_RESULT__')) {
+      const data = JSON.parse(content.replace('__IMAGE_RESULT__', ''));
+      div.innerHTML = `
+        <div class="msg-avatar ai">✦</div>
+        <div class="msg-content" style="max-width:90%;">
+          <div class="msg-bubble" style="padding:12px;">
+            <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
+              ✨ Here are 3 images generated for: <strong style="color:var(--text-primary);">"${data.prompt}"</strong>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+              ${data.urls.map((url, i) => `
+                <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+                  <img src="${url}" alt="Generated image ${i+1}"
+                    style="width:100%;height:140px;object-fit:cover;display:block;cursor:pointer;"
+                    onclick="window.open('${url}','_blank')"
+                    onerror="this.parentElement.innerHTML='<div style=\'height:140px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px;\'>Loading...</div>'"
+                  />
+                  <a href="${url}" download="leamus-ai-image-${i+1}.jpg"
+                    style="position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,0.7);color:white;border-radius:6px;padding:3px 8px;font-size:11px;text-decoration:none;cursor:pointer;">
+                    ⬇ Save
+                  </a>
+                </div>
+              `).join('')}
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);">Click any image to view full size · Click ⬇ Save to download</div>
+          </div>
+          <div class="msg-time">${time || now()}</div>
+          <div class="msg-actions">
+            <button class="msg-action-btn" onclick="this.closest('.msg').querySelectorAll('img').forEach(img => { const a = document.createElement('a'); a.href=img.src; a.download='leamus-ai.jpg'; a.click(); })">⬇ Download All</button>
+          </div>
+        </div>
+      `;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+      return;
+    }
+
+    if (role === 'ai' && content.startsWith('__VIDEO_RESULT__')) {
+      const data = JSON.parse(content.replace('__VIDEO_RESULT__', ''));
+      const totalDuration = data.scenes.reduce((sum, s) => sum + s.duration, 0);
+
+      div.innerHTML = `
+        <div class="msg-avatar ai">✦</div>
+        <div class="msg-content" style="max-width:92%;">
+          <div class="msg-bubble" style="padding:14px;">
+            <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
+              🎬 Video created for: <strong style="color:var(--text-primary);">"${data.prompt}"</strong>
+              <span style="margin-left:8px;font-size:11px;color:var(--text-muted);">${totalDuration}s · ${data.scenes.length} scenes</span>
+            </div>
+
+            <!-- Video Player -->
+            <div style="background:#000;border-radius:10px;overflow:hidden;position:relative;margin-bottom:10px;" id="videoPlayer_${Date.now()}">
+              <div id="sceneContainer" style="position:relative;width:100%;padding-top:56.25%;">
+                <img id="sceneImage" src="${data.scenes[0].imageUrl}"
+                  style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;"
+                  onerror="this.style.background='#1a1a2e'"
+                />
+                <div id="sceneCaption" style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:20px 12px 10px;color:white;font-size:13px;">
+                  ${data.scenes[0].caption}
+                </div>
+                <div id="sceneCounter" style="position:absolute;top:8px;right:10px;background:rgba(0,0,0,0.6);color:white;font-size:11px;padding:3px 8px;border-radius:10px;">
+                  Scene 1/${data.scenes.length}
+                </div>
+                <div id="playOverlay" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);cursor:pointer;">
+                  <div style="width:56px;height:56px;background:rgba(108,127,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;">▶</div>
+                </div>
+              </div>
+
+              <!-- Progress bar -->
+              <div style="background:#222;padding:8px 12px;display:flex;align-items:center;gap:10px;">
+                <span id="playBtn" style="cursor:pointer;font-size:18px;color:white;">▶</span>
+                <div style="flex:1;height:4px;background:#444;border-radius:2px;cursor:pointer;" id="progressBar">
+                  <div id="progressFill" style="height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width 0.3s;"></div>
+                </div>
+                <span id="timeDisplay" style="font-size:11px;color:#aaa;min-width:50px;">0:00 / ${Math.floor(totalDuration/60)}:${String(totalDuration%60).padStart(2,'0')}</span>
+              </div>
+            </div>
+
+            <!-- Scene thumbnails -->
+            <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;">
+              ${data.scenes.map((s, i) => `
+                <div class="scene-thumb" data-scene="${i}"
+                  style="flex-shrink:0;width:80px;border-radius:6px;overflow:hidden;border:2px solid ${i===0?'var(--accent)':'var(--border)'};cursor:pointer;">
+                  <img src="${s.imageUrl}" style="width:100%;height:48px;object-fit:cover;display:block;"
+                    onerror="this.style.background='#333'"
+                  />
+                  <div style="font-size:10px;padding:2px 4px;background:var(--glass2);color:var(--text-muted);text-align:center;">${s.duration}s</div>
+                </div>
+              `).join('')}
+            </div>
+
+            <div style="font-size:11px;color:var(--text-muted);">Click ▶ to play · Click scenes to jump · Images load in order</div>
+          </div>
+          <div class="msg-time">${time || now()}</div>
+        </div>
+      `;
+
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+
+      // Video player logic
+      setTimeout(() => {
+        const scenes = data.scenes;
+        let currentScene = 0;
+        let playing = false;
+        let elapsed = 0;
+        let interval = null;
+        const totalSecs = totalDuration;
+
+        const sceneImage = div.querySelector('#sceneImage');
+        const sceneCaption = div.querySelector('#sceneCaption');
+        const sceneCounter = div.querySelector('#sceneCounter');
+        const playBtn = div.querySelector('#playBtn');
+        const playOverlay = div.querySelector('#playOverlay');
+        const progressFill = div.querySelector('#progressFill');
+        const timeDisplay = div.querySelector('#timeDisplay');
+
+        function formatTime(s) {
+          return `${Math.floor(s/60)}:${String(Math.floor(s)%60).padStart(2,'0')}`;
+        }
+
+        function goToScene(idx) {
+          currentScene = idx;
+          sceneImage.src = scenes[idx].imageUrl;
+          sceneCaption.textContent = scenes[idx].caption;
+          sceneCounter.textContent = `Scene ${idx+1}/${scenes.length}`;
+          div.querySelectorAll('.scene-thumb').forEach((t,i) => {
+            t.style.borderColor = i === idx ? 'var(--accent)' : 'var(--border)';
+          });
+        }
+
+        function stopPlay() {
+          playing = false;
+          clearInterval(interval);
+          playBtn.textContent = '▶';
+          if (playOverlay) playOverlay.style.display = 'flex';
+        }
+
+        function startPlay() {
+          playing = true;
+          if (playOverlay) playOverlay.style.display = 'none';
+          playBtn.textContent = '⏸';
+
+          // Calculate scene boundaries
+          let sceneBoundaries = [];
+          let acc = 0;
+          scenes.forEach(s => { acc += s.duration; sceneBoundaries.push(acc); });
+
+          interval = setInterval(() => {
+            elapsed += 0.1;
+            if (elapsed >= totalSecs) {
+              elapsed = 0;
+              currentScene = 0;
+              goToScene(0);
+              stopPlay();
+              progressFill.style.width = '0%';
+              timeDisplay.textContent = `0:00 / ${formatTime(totalSecs)}`;
+              return;
+            }
+
+            // Update progress
+            progressFill.style.width = `${(elapsed/totalSecs)*100}%`;
+            timeDisplay.textContent = `${formatTime(elapsed)} / ${formatTime(totalSecs)}`;
+
+            // Check scene change
+            let newScene = sceneBoundaries.findIndex(b => elapsed < b);
+            if (newScene === -1) newScene = scenes.length - 1;
+            if (newScene !== currentScene) goToScene(newScene);
+          }, 100);
+        }
+
+        playBtn.addEventListener('click', () => { playing ? stopPlay() : startPlay(); });
+        playOverlay?.addEventListener('click', () => { playing ? stopPlay() : startPlay(); });
+
+        div.querySelectorAll('.scene-thumb').forEach((thumb, i) => {
+          thumb.addEventListener('click', () => {
+            let acc = 0;
+            for (let j = 0; j < i; j++) acc += scenes[j].duration;
+            elapsed = acc;
+            goToScene(i);
+            if (!playing) startPlay();
+          });
+        });
+      }, 500);
+
+      return;
+    }
+
+    // Normal text message
+    const bubbleInner = formatText(content);
     div.innerHTML = `
       <div class="msg-avatar ${role}">${role === 'ai' ? '✦' : user.initials}</div>
       <div class="msg-content">
-        <div class="msg-bubble">${formatText(content)}</div>
+        <div class="msg-bubble">${bubbleInner}</div>
         <div class="msg-time">${time || now()}</div>
         ${actionsHtml}
-      </div>`;
+      </div>
+    `;
+
     div.querySelector('.copy-btn')?.addEventListener('click', function() {
       navigator.clipboard?.writeText(div.querySelector('.msg-bubble').innerText).catch(() => {});
-      this.textContent = '✓ Copied'; setTimeout(() => this.textContent = '📋 Copy', 1500);
+      this.textContent = '✓ Copied';
+      setTimeout(() => this.textContent = '📋 Copy', 1500);
     });
+
     div.querySelector('.save-btn')?.addEventListener('click', function() {
-      this.textContent = '✓ Saved'; setTimeout(() => this.textContent = '💾 Save', 1500);
+      this.textContent = '✓ Saved';
+      setTimeout(() => this.textContent = '💾 Save', 1500);
     });
+
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
   }
-
+  
   function addTypingIndicator() {
     const div = document.createElement('div');
     div.className = 'msg ai'; div.id = 'typingMsg';
