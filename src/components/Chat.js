@@ -52,7 +52,6 @@ export function renderChat(container, { user, initialMode = 'chat' }) {
           <button class="quick-btn" data-insert="Summarize the following: ">📋 Summarize</button>
           <button class="quick-btn" data-insert="Research and explain: ">🔍 Research</button>
           <button class="quick-btn" data-insert="Generate image of: ">🖼️ Image</button>
-          <button class="quick-btn" data-insert="Generate video of: ">🎬 Video</button>
         </div>
         <div id="filePreviewArea"></div>
         <div class="input-row">
