@@ -69,50 +69,31 @@ async function generateImage(userMessage) {
 }
 
 async function generateVideo(userMessage) {
-  try {
-    const prompt = userMessage
-      .replace(/generate video of|create video of|make video of|generate a video of|create a video of|make a video of/gi, '')
-      .trim();
+  const prompt = userMessage
+    .replace(/generate video of|create video of|make video of|generate a video of|create a video of|make a video of/gi, '')
+    .trim();
 
-    // Get scene descriptions from AI
-    const sceneResponse = await fetch('https://text.pollinations.ai/openai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'openai',
-        messages: [
-          { role: 'system', content: 'You are a video scene designer. Given a prompt, return ONLY a JSON array of exactly 5 scene objects with fields: "scene" (number), "description" (short visual description for image generation, max 10 words), "duration" (seconds, between 3-8), "caption" (one sentence shown on screen). No other text, just valid JSON.' },
-          { role: 'user', content: prompt }
-        ]
-      })
-    });
+  // Analyze prompt for visual themes
+  const themes = {
+    ocean: ['ocean','sea','wave','beach','water','surf','underwater'],
+    forest: ['forest','tree','jungle','wood','nature','leaf','green'],
+    space: ['space','star','galaxy','cosmos','universe','planet','nebula'],
+    city: ['city','urban','building','street','night','neon','metropolis'],
+    fire: ['fire','flame','lava','volcano','burn','hot','inferno'],
+    sunset: ['sunset','sunrise','dawn','dusk','golden','horizon','sky'],
+    snow: ['snow','ice','winter','blizzard','frost','cold','arctic'],
+    rain: ['rain','storm','thunder','lightning','cloud','drizzle'],
+    abstract: ['abstract','pattern','geometric','fractal','art','digital']
+  };
 
-    const sceneData = await sceneResponse.json();
-    let scenes = [];
-
-    try {
-      const text = sceneData.choices[0].message.content;
-      const clean = text.replace(/```json|```/g, '').trim();
-      scenes = JSON.parse(clean);
-    } catch {
-      scenes = [
-        { scene: 1, description: prompt + ' opening wide shot', duration: 5, caption: 'Scene 1: ' + prompt },
-        { scene: 2, description: prompt + ' close up detail', duration: 5, caption: 'Scene 2: Close-up view' },
-        { scene: 3, description: prompt + ' dramatic angle', duration: 5, caption: 'Scene 3: Dramatic angle' },
-        { scene: 4, description: prompt + ' golden hour lighting', duration: 5, caption: 'Scene 4: Beautiful lighting' },
-        { scene: 5, description: prompt + ' cinematic finale', duration: 5, caption: 'Scene 5: Finale' }
-      ];
+  let detectedTheme = 'abstract';
+  const promptLower = prompt.toLowerCase();
+  for (const [theme, keywords] of Object.entries(themes)) {
+    if (keywords.some(k => promptLower.includes(k))) {
+      detectedTheme = theme;
+      break;
     }
-
-    // Generate image for each scene
-    const seed = Math.floor(Math.random() * 1000000);
-    const scenesWithImages = scenes.map((s, i) => ({
-      ...s,
-      imageUrl: `https://image.pollinations.ai/prompt/${encodeURIComponent(s.description + ', cinematic, 4k')}?width=768&height=432&seed=${seed + i}&nologo=true`
-    }));
-
-    return `__VIDEO_RESULT__${JSON.stringify({ prompt, scenes: scenesWithImages })}`;
-  } catch (error) {
-    return 'Sorry, video generation failed: ' + error.message;
   }
+
+  return `__CANVAS_VIDEO__${JSON.stringify({ prompt, theme: detectedTheme })}`;
 }
