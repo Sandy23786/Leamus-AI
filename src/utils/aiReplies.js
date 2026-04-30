@@ -3,23 +3,50 @@ const SYSTEM_PROMPTS = {
   write:    'You are Leamus AI, an expert writer. Help with emails, blogs, stories, and writing tasks.',
   code:     'You are Leamus AI, a senior software engineer. Write clean code with explanations.',
   data:     'You are Leamus AI, a data analyst. Interpret data and provide structured insights.',
-  research: 'You are Leamus AI, a research assistant. Provide accurate, well-structured information.',
-  image:    'You are Leamus AI, an image generation assistant. When given a prompt, respond with ONLY a detailed, comma-separated list of descriptive keywords optimized for image generation. No other text.',
-  video:    'You are Leamus AI, a video concept assistant. Create a detailed scene-by-scene description for a short video based on the prompt.'
+  research: 'You are Leamus AI, a research assistant. Provide accurate, well-structured information.'
 };
 
+const IMAGE_STYLES = {
+  photo:      'hyperrealistic photography, 8k uhd, DSLR, sharp focus, high detail, professional lighting',
+  art:        'digital art, concept art, highly detailed, artstation, deviantart, smooth, sharp focus',
+  cinematic:  'cinematic shot, film grain, anamorphic lens, dramatic lighting, movie still, epic composition',
+  portrait:   'professional portrait, studio lighting, bokeh background, sharp eyes, detailed skin texture',
+  landscape:  'epic landscape, golden hour, god rays, detailed environment, ultra wide angle, breathtaking',
+  fantasy:    'fantasy art, magical atmosphere, ethereal lighting, intricate details, artstation trending',
+  anime:      'anime style, studio ghibli, vibrant colors, detailed background, high quality animation',
+  default:    'ultra detailed, high quality, 8k resolution, masterpiece, best quality, sharp focus'
+};
+
+function detectStyle(prompt) {
+  const p = prompt.toLowerCase();
+  if (p.includes('portrait') || p.includes('person') || p.includes('face') || p.includes('people')) return 'portrait';
+  if (p.includes('landscape') || p.includes('mountain') || p.includes('nature') || p.includes('scenery')) return 'landscape';
+  if (p.includes('cinematic') || p.includes('movie') || p.includes('film') || p.includes('scene')) return 'cinematic';
+  if (p.includes('anime') || p.includes('cartoon') || p.includes('manga')) return 'anime';
+  if (p.includes('fantasy') || p.includes('magic') || p.includes('dragon') || p.includes('wizard')) return 'fantasy';
+  if (p.includes('art') || p.includes('painting') || p.includes('illustration') || p.includes('drawing')) return 'art';
+  if (p.includes('photo') || p.includes('realistic') || p.includes('real')) return 'photo';
+  return 'default';
+}
+
+function buildEnhancedPrompt(userPrompt, style) {
+  const styleKeywords = IMAGE_STYLES[style];
+  const negativeImplicit = 'vibrant colors, rich textures, perfect composition, balanced lighting';
+  return `${userPrompt}, ${styleKeywords}, ${negativeImplicit}`;
+}
+
 export async function getAIReply(mode, userMessage) {
-  // Check if user wants image generation
-  const imgTriggers = ['generate image', 'create image', 'make image', 'draw', 'generate a picture', 'create a picture', 'show me an image', 'generate photo', 'create photo'];
-  const vidTriggers = ['generate video', 'create video', 'make video', 'create a video', 'generate a video', 'make a video'];
+  const imgTriggers = [
+    'generate image', 'create image', 'make image', 'draw',
+    'generate a picture', 'create a picture', 'show me an image',
+    'generate photo', 'create photo', 'make a photo', 'paint',
+    'illustrate', 'visualize', 'render'
+  ];
 
   const msgLower = userMessage.toLowerCase();
   const isImageRequest = imgTriggers.some(t => msgLower.includes(t));
-  const isVideoRequest = vidTriggers.some(t => msgLower.includes(t));
 
   if (isImageRequest) return await generateImage(userMessage);
-  if (isVideoRequest) return await generateVideo(userMessage);
-
   return await getTextReply(mode, userMessage);
 }
 
@@ -46,54 +73,39 @@ async function getTextReply(mode, userMessage) {
 }
 
 async function generateImage(userMessage) {
-  try {
-    // Clean the prompt
-    const prompt = userMessage
-      .replace(/generate image of|create image of|make image of|draw|generate a picture of|create a picture of|show me an image of|generate photo of|create photo of/gi, '')
-      .trim();
-
-    const encodedPrompt = encodeURIComponent(prompt);
-    const seed = Math.floor(Math.random() * 1000000);
-
-    // Generate 3 variations
-    const urls = [
-      `https://image.pollinations.ai/prompt/${encodedPrompt}?width=768&height=512&seed=${seed}&nologo=true`,
-      `https://image.pollinations.ai/prompt/${encodedPrompt}?width=768&height=512&seed=${seed+1}&nologo=true`,
-      `https://image.pollinations.ai/prompt/${encodedPrompt}?width=768&height=512&seed=${seed+2}&nologo=true`
-    ];
-
-    return `__IMAGE_RESULT__${JSON.stringify({ prompt, urls })}`;
-  } catch (error) {
-    return 'Sorry, image generation failed. Please try again.';
-  }
-}
-
-async function generateVideo(userMessage) {
-  const prompt = userMessage
-    .replace(/generate video of|create video of|make video of|generate a video of|create a video of|make a video of/gi, '')
+  const rawPrompt = userMessage
+    .replace(/generate image of|create image of|make image of|draw a|draw an|draw|generate a picture of|create a picture of|show me an image of|generate photo of|create photo of|make a photo of|paint a|paint an|paint|illustrate|visualize|render/gi, '')
     .trim();
 
-  // Analyze prompt for visual themes
-  const themes = {
-    ocean: ['ocean','sea','wave','beach','water','surf','underwater'],
-    forest: ['forest','tree','jungle','wood','nature','leaf','green'],
-    space: ['space','star','galaxy','cosmos','universe','planet','nebula'],
-    city: ['city','urban','building','street','night','neon','metropolis'],
-    fire: ['fire','flame','lava','volcano','burn','hot','inferno'],
-    sunset: ['sunset','sunrise','dawn','dusk','golden','horizon','sky'],
-    snow: ['snow','ice','winter','blizzard','frost','cold','arctic'],
-    rain: ['rain','storm','thunder','lightning','cloud','drizzle'],
-    abstract: ['abstract','pattern','geometric','fractal','art','digital']
-  };
+  const style = detectStyle(rawPrompt);
+  const enhancedPrompt = buildEnhancedPrompt(rawPrompt, style);
+  const encodedPrompt = encodeURIComponent(enhancedPrompt);
+  const seed = Math.floor(Math.random() * 99999999);
 
-  let detectedTheme = 'abstract';
-  const promptLower = prompt.toLowerCase();
-  for (const [theme, keywords] of Object.entries(themes)) {
-    if (keywords.some(k => promptLower.includes(k))) {
-      detectedTheme = theme;
-      break;
+  // Generate 4 high quality variations with different seeds and models
+  const variations = [
+    {
+      label: 'Standard',
+      url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=768&seed=${seed}&model=flux&nologo=true&enhance=true`
+    },
+    {
+      label: 'Variation 2',
+      url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=768&seed=${seed+1}&model=flux&nologo=true&enhance=true`
+    },
+    {
+      label: 'Variation 3',
+      url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=768&seed=${seed+2}&model=flux&nologo=true&enhance=true`
+    },
+    {
+      label: 'Square',
+      url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${seed+3}&model=flux&nologo=true&enhance=true`
     }
-  }
+  ];
 
-  return `__CANVAS_VIDEO__${JSON.stringify({ prompt, theme: detectedTheme })}`;
+  return `__IMAGE_RESULT__${JSON.stringify({
+    prompt: rawPrompt,
+    enhancedPrompt,
+    style,
+    variations
+  })}`;
 }
