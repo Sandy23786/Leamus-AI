@@ -51,8 +51,10 @@ export async function getAIReply(mode, userMessage) {
 }
 
 async function getTextReply(mode, userMessage) {
+  const systemPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.chat;
+
+  // Try method 1 — Pollinations OpenAI format
   try {
-    const systemPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.chat;
     const response = await fetch('https://text.pollinations.ai/openai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -64,12 +66,50 @@ async function getTextReply(mode, userMessage) {
         ]
       })
     });
-    const data = await response.json();
-    if (data.choices && data.choices[0]) return data.choices[0].message.content;
-    return 'Sorry, I could not get a response. Please try again.';
-  } catch (error) {
-    return 'Error: ' + error.message;
-  }
+    if (response.ok) {
+      const data = await response.json();
+      if (data.choices && data.choices[0]?.message?.content) {
+        return data.choices[0].message.content;
+      }
+    }
+  } catch (e) { console.warn('Method 1 failed:', e); }
+
+  // Try method 2 — Pollinations simple GET format
+  try {
+    const prompt = encodeURIComponent(`${systemPrompt}\n\nUser: ${userMessage}\n\nAssistant:`);
+    const response = await fetch(`https://text.pollinations.ai/${prompt}`, {
+      method: 'GET',
+      headers: { 'Accept': 'text/plain' }
+    });
+    if (response.ok) {
+      const text = await response.text();
+      if (text && text.trim().length > 0) return text.trim();
+    }
+  } catch (e) { console.warn('Method 2 failed:', e); }
+
+  // Try method 3 — Pollinations with different model
+  try {
+    const response = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'mistral',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ]
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.choices && data.choices[0]?.message?.content) {
+        return data.choices[0].message.content;
+      }
+    }
+  } catch (e) { console.warn('Method 3 failed:', e); }
+
+  // Fallback — basic response
+  return `I'm having trouble connecting to the AI service right now. Please check your internet connection and try again in a moment. If the problem persists, try refreshing the page.`;
 }
 
 async function generateImage(userMessage) {
