@@ -1,4 +1,4 @@
-const ANTHROPIC_KEY = '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';
+const ANTHROPIC_KEY = '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';
 
 const SYSTEM_PROMPTS = {
   chat:     'You are Leamus AI, a helpful and knowledgeable assistant. Give clear, accurate, well-structured responses.',
@@ -57,7 +57,7 @@ async function getTextReply(mode, userMessage) {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'model: claude-haiku-4-5',
         max_tokens: 1024,
         system: SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.chat,
         messages: [{ role: 'user', content: userMessage }]
