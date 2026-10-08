@@ -1,5 +1,3 @@
-const ANTHROPIC_KEY = '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';
-
 const SYSTEM_PROMPTS = {
   chat:     'You are Leamus AI, a helpful and knowledgeable assistant. Give clear, accurate, well-structured responses.',
   write:    'You are Leamus AI, an expert writer. Help with emails, blogs, stories, reports, and any writing tasks. Produce polished, professional content.',
@@ -39,45 +37,83 @@ export async function getAIReply(mode, userMessage) {
     'illustrate', 'visualize', 'render'
   ];
 
-  const msgLower = userMessage.toLowerCase();
-  const isImageRequest = imgTriggers.some(t => msgLower.includes(t));
-
+  const isImageRequest = imgTriggers.some(t => userMessage.toLowerCase().includes(t));
   if (isImageRequest) return await generateImage(userMessage);
   return await getTextReply(mode, userMessage);
 }
 
 async function getTextReply(mode, userMessage) {
+  const systemPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.chat;
+  const fullPrompt = `${systemPrompt}\n\nUser: ${userMessage}\n\nAssistant:`;
+
+  // Method 1 — Pollinations OpenAI-compatible endpoint
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://text.pollinations.ai/openai', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'model: claude-haiku-4-5',
-        max_tokens: 1024,
-        system: SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.chat,
-        messages: [{ role: 'user', content: userMessage }]
+        model: 'openai-large',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        seed: Math.floor(Math.random() * 9999)
       })
     });
-
-    const data = await response.json();
-
-    if (data.content && data.content[0]?.text) {
-      return data.content[0].text;
-    } else if (data.error) {
-      console.error('Anthropic error:', data.error);
-      return `API Error: ${data.error.message}`;
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (text && text.trim().length > 10) return text.trim();
     }
-    return 'Sorry, I could not get a response. Please try again.';
+  } catch (e) { console.warn('Method 1 failed:', e.message); }
 
-  } catch (error) {
-    console.error('Fetch error:', error);
-    return 'Connection error. Please check your internet and try again.';
-  }
+  // Method 2 — Pollinations simple GET endpoint
+  try {
+    const encoded = encodeURIComponent(fullPrompt);
+    const res = await fetch(
+      `https://text.pollinations.ai/${encoded}?model=openai-large&seed=${Math.floor(Math.random()*9999)}`,
+      { method: 'GET' }
+    );
+    if (res.ok) {
+      const text = await res.text();
+      if (text && text.trim().length > 10) return text.trim();
+    }
+  } catch (e) { console.warn('Method 2 failed:', e.message); }
+
+  // Method 3 — Pollinations with mistral model fallback
+  try {
+    const res = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'mistral',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ]
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (text && text.trim().length > 10) return text.trim();
+    }
+  } catch (e) { console.warn('Method 3 failed:', e.message); }
+
+  // Method 4 — Pollinations GET with shorter prompt
+  try {
+    const shortPrompt = encodeURIComponent(`${userMessage}`);
+    const res = await fetch(
+      `https://text.pollinations.ai/${shortPrompt}?system=${encodeURIComponent(systemPrompt)}&model=openai`,
+      { method: 'GET' }
+    );
+    if (res.ok) {
+      const text = await res.text();
+      if (text && text.trim().length > 10) return text.trim();
+    }
+  } catch (e) { console.warn('Method 4 failed:', e.message); }
+
+  return 'Leamus AI is having trouble connecting right now. Please try again in a moment.';
 }
 
 async function generateImage(userMessage) {
@@ -92,10 +128,10 @@ async function generateImage(userMessage) {
   const seed = Math.floor(Math.random() * 99999999);
 
   const variations = [
-    { label: 'Standard', url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=768&seed=${seed}&model=flux&nologo=true&enhance=true` },
+    { label: 'Standard',    url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=768&seed=${seed}&model=flux&nologo=true&enhance=true` },
     { label: 'Variation 2', url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=768&seed=${seed+1}&model=flux&nologo=true&enhance=true` },
     { label: 'Variation 3', url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=768&seed=${seed+2}&model=flux&nologo=true&enhance=true` },
-    { label: 'Square', url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${seed+3}&model=flux&nologo=true&enhance=true` }
+    { label: 'Square',      url: `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${seed+3}&model=flux&nologo=true&enhance=true` }
   ];
 
   return `__IMAGE_RESULT__${JSON.stringify({ prompt: rawPrompt, enhancedPrompt, style, variations })}`;
