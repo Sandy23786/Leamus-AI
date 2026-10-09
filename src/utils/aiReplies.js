@@ -1,6 +1,6 @@
 const SYSTEM_PROMPTS = {
   chat:     'You are Leamus AI, a helpful and knowledgeable assistant. Give clear, accurate, well-structured responses.',
-  write:    'You are Leamus AI, an expert writer. Help with emails, blogs, stories, reports, and any writing tasks. Produce polished, professional content.',
+  write:    'You are Leamus AI, an expert writer. Help with emails, blogs, stories, reports, and writing tasks. Produce polished, professional content.',
   code:     'You are Leamus AI, a senior software engineer. Write clean, well-commented code with clear explanations. Support all major programming languages.',
   data:     'You are Leamus AI, a data analyst. Interpret data, identify trends, and provide structured insights with bullet points and summaries.',
   research: 'You are Leamus AI, a research assistant. Provide accurate, well-structured, and detailed information with clear sections.'
@@ -52,14 +52,18 @@ async function getTextReply(mode, userMessage) {
       body: JSON.stringify({ message: userMessage, systemPrompt })
     });
 
-    const data = await response.json();
+    if (!response.ok) {
+      const errText = await response.text();
+      return `Server error ${response.status}: ${errText}`;
+    }
 
+    const data = await response.json();
     if (data.text) return data.text;
-    if (data.error) return `Error: ${data.error}`;
-    return 'Sorry, I could not get a response. Please try again.';
+    if (data.error) return `API Error: ${data.error}`;
+    return 'Sorry, no response received. Please try again.';
 
   } catch (error) {
-    return 'Connection error: ' + error.message;
+    return `Connection error: ${error.message}`;
   }
 }
 
